@@ -5,6 +5,9 @@ from typing import List
 import warnings
 import numpy as np
 from matplotlib.collections import LineCollection
+from .core import ODEModel
+from numpy.typing import ArrayLike
+from typing import Tuple, List
 
 
 def colored_line(x, y, c, ax, **lc_kwargs):
@@ -115,3 +118,48 @@ def plot_solution(df: pd.DataFrame, time_variable='time', variables: List[str]= 
                              linewidth=0.5, color='k', **kwargs)
         plt.ylabel(variables[i])
     plt.xlabel(time_variable)
+
+def plot_gradient(model: ODEModel, defaults: ArrayLike = None, t: float = 0, bounds: List[Tuple[float, float]] = None):
+    """Plot d/dt as a vector of each state variable against each other.
+
+    Args:
+        model (ODEModel): Model that generates d/dt
+        defaults (ArrayLike, optional): The value to give the off-axis state variables. Defaults to None.
+        t (float, optional): Time at which to evaluate derivative. Defaults to 0.
+        bounds (List[Tuple[float, float]], optional): Bounds of state variables to grid search. Defaults to None.
+    """
+    variables = model.names()
+    n = len(variables)
+    if defaults is None:
+        defaults = np.zeros(n)
+    if bounds is None:
+        bounds = [(-1, 1) for _ in range(n)]
+    plt.figure(figsize=(4*n, 4*n))
+    for fi in range(n):
+        for fj in range(n):
+            plt.subplot(n, n, fi*n + fj + 1)
+            if fi == fj:
+                x = np.linspace(bounds[fi][0], bounds[fi][1], 20)
+                y = np.zeros(len(x))
+                for i, xi in enumerate(x):
+                    state = defaults.copy()
+                    state[fi] = xi
+                    y[i] = model(state, t)[fi]
+                plt.plot(x, y)
+            else:
+                x = np.linspace(bounds[fj][0], bounds[fj][1], 20)
+                y = np.linspace(bounds[fi][0], bounds[fi][1], 20)
+                X, Y = np.meshgrid(x, y)
+                Z = np.zeros((len(y),len(x),2))
+                for i, xi in enumerate(x):
+                    for j, yj in enumerate(y):
+                        state = defaults.copy()
+                        state[fi] = xi
+                        state[fj] = yj
+                        ddt = model(state, t)
+                        Z[i, j,0] = ddt[fj]
+                        Z[i, j,1] = ddt[fi]
+                plt.quiver(X, Y, Z[:,:,0], Z[:,:,1])
+                ax = plt.gca()
+                ax.set_xlabel(variables[fj])
+                ax.set_ylabel(variables[fi])

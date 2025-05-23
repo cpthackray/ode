@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class ODEModel(Protocol):
-    def __call__(self, t: float, state: ArrayLike) -> ArrayLike:
+    def __call__(self, state: ArrayLike, t: float) -> ArrayLike:
         """Calling the ODEModel for a given time `t` should return the instantaneous rate of change."""
         pass
 
